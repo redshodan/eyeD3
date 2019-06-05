@@ -108,14 +108,15 @@ class VorbisAudioInfo(core.AudioInfo):
         self.pages = OggPage.parse(file_obj)
         id_page = None
         cmt_page = None
+        last_page = None
         for page in self.pages:
             if page.buffer.startswith(b"\x01vorbis"):
                 id_page = page
             elif page.buffer.startswith(b"\x03vorbis"):
                 cmt_page = page
-            if id_page and cmt_page:
-                break
-        if not id_page or not cmt_page:
+            if (id_page and page.serial == id_page.serial and page.isLast()):
+                last_page = page
+        if not id_page or not cmt_page or not last_page:
             raise VorbisException("Couldn't find Vorbis headers")
 
         # Identification header
@@ -141,6 +142,8 @@ class VorbisAudioInfo(core.AudioInfo):
         self.bit_rate = (self.max_bitrate if self.max_bitrate else 0,
                          self.bitrate)
 
+        self.time_secs = last_page.position / float(self.sample_rate)
+
         # Comment header
         self.vendor_len = struct.unpack("<I", cmt_page.buffer[7:11])[0]
         self.vendor = cmt_page.buffer[11:11 + self.vendor_len].decode("utf-8")
@@ -161,7 +164,8 @@ class VorbisAudioInfo(core.AudioInfo):
                 f"nominal_bitrate={self.nominal_bitrate} "
                 f"min_bitrate={self.min_bitrate} bitrate={self.bitrate} "
                 f"vendor_len={self.vendor_len} vendor={self.vendor} "
-                f"ncomments={self._tag._ncomments} comments={self._tag._vorbis_comments}")
+                f"ncomments={self._tag._ncomments} comments={self._tag._vorbis_comments}"
+                f"time_secs={self.time_secs}")
 
 
 class VorbisAudioFile(core.AudioFile):
@@ -182,11 +186,11 @@ class VorbisAudioFile(core.AudioFile):
             self.type = core.AUDIO_VORBIS
             try:
                 self._info = VorbisAudioInfo(file_obj, self._tag)
-                # print(self._info)
-                # a = list(self._tag._vorbis_comments.keys())
-                # a.sort()
-                # for k in a:
-                #     print(k, self._tag._vorbis_comments[k])
+                print(self._info)
+                a = list(self._tag._vorbis_comments.keys())
+                a.sort()
+                for k in a:
+                    print(k, self._tag._vorbis_comments[k])
             except VorbisException as ex:
                 # Only logging a warning here since we can still operate on
                 # the tag.

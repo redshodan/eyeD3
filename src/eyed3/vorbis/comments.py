@@ -3,9 +3,13 @@ from argparse import Namespace
 from .. import core
 from ..id3.tag import AccessorBase
 from ..utils import requireUnicode
+from . import OGG_V1
 
 
 __all__ = ["VorbisTag"]
+
+
+ALBUM_TYPES = {"album": "lp"}
 
 
 class VorbisCommentAccessor(AccessorBase):
@@ -78,8 +82,7 @@ class VorbisTag(core.Tag):
         self._objects = VorbisCommentAccessor("", self)
         self._privates = VorbisCommentAccessor("", self)
         self._user_texts = VorbisUserTextsAccessor(
-            {core.TXXX_ALBUM_TYPE: "releasetype"},
-            {"album": "lp"}, self)
+            {core.TXXX_ALBUM_TYPE: "releasetype"}, ALBUM_TYPES, self)
         self._unique_file_ids = VorbisCommentAccessor("", self)
         self._user_urls = VorbisCommentAccessor("", self)
         self._chapters = VorbisCommentAccessor("", self)
@@ -88,8 +91,7 @@ class VorbisTag(core.Tag):
         self._composer = VorbisCommentAccessor("", self)
         self._cdId = VorbisCommentAccessor("", self)
         self._termsOfUse = VorbisCommentAccessor("", self)
-
-        # cheese
+        # self.version = OGG_V1
         from ..id3 import ID3_V1
         self.version = ID3_V1
 
@@ -306,3 +308,8 @@ class VorbisTag(core.Tag):
     @property
     def artist_origin(self):
         return None
+
+    @property
+    def album_type(self):
+        if "releasetype" in self._vorbis_comments:
+            return self._vorbis_comments["releasetype"]
